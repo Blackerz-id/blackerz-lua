@@ -1,0 +1,7 @@
+{
+   "baseURL": "https://blackerz.herokuapp.com",
+   "url": {
+      "getBotData": "/api/v1/bots/%s",
+      "editBotData": "/api/v1/bots/%s/edit"
+   }
+}
