@@ -1,50 +1,60 @@
--- 
+-- credits...
+
+-- bottom text
 
 local coro = require("coro-http")
 local json = require("json")
+local fs = require("fs")
 
-local web = "https://blackerz.herokuapp.com"
+local configs = JSON.parse(fs.readSync(fs.openSync("./endpoints.json")))
+local blackerzMT = {}
+blackerzMT.__index = blackerzMT
 
-local ends = {
-  bot = web .. "/api/v1/bots/-",
-  edit = web .. "/api/v1/bots/-/edit"
-}
+local baseURL = configs.baseURL
+local endpoints = configs.url
 
-function fix(url, id)
-  local b = url:gsub('-', id)
-  return b
+function fixURL(url, ...)
+  return (baseURL..url):format(...)
+end
+
+-- Previous function was  `blackerz:auth()`
+function blackerzMT:verify(v1, dID)
+   self.t = v1
+   self.d = dID -- latest version; client id is now optional
+   return self
+end
+
+function blackerzMT:botData(id)
+   local res, body = coro.request("GET", fixURL(endpoints.getBotData, id), {{["Content-Type"] = "application/json"}})
+   return json.parse(body) -- result
+end
+
+function blackerzMT:editBot(id, info)
+    assert(self.t, "use blackerz:auth(v1 token, devID?) first to edit bots.")
+    assert(type(info)=="table", "#2 params must be valid table")
+    
+    local data = {}
+
+    if type(info.shortDescription) == "string" and #info.shortDescription <= 120 and #info.shortDescription > 0 then data.shortDescription = info.shortDescription end
+    if type(info.longDescription) == "string" and #info.longDescription < 2000 and #info.longDescription > 0 then data.longDescription = info.longDescription end
+    if type(info.prefix) == "string" and #info.prefix < 6 and #info.prefix > 0 then data.prefix = info.prefix end
+    if type(info.tags) == "table" then data.tags = info.tags end
+
+    local res, body = coro.request("POST", fixURL(endpoints.editBotData, id), {{
+      ["Content-Type"] = "application/json",
+      ["Authorization"] = self.t,
+      ["clientId"] = self.d
+    }}, json.stringify(data))
+  
+    return res.code == 201, json.parse(body) -- success: (true|false), body: data returned by server.
 end
 
 function blackerz()
-  local fns = {}
+  local self = setmetatable({}, blackerzMT)
 
-  function fns:auth(v1, dID)
-    fns.t = v1
-    fns.d = dID
-  end
-
-  function fns:botData(id)
-    local res, body = coro.request("GET", fix(ends.bot, id), {{["Content-Type"] = "application/json"}})
-    return json.parse(body) -- result
-  end
-
-  function fns:editBot(id, info)
-    assert(fns.t, "use blackerz:auth(v1 token, devID) first to edit bots.")
-    assert(fns.d, "you didn't input developer id in blackerz:auth(v1 token, devID)")
-    assert(info, "you tried to edit a bot with nothing")
-
-    local data = {}
-
-    if info.shortDescription then data.shortDescription = info.shortDescription end
-
-    coro.request("POST", fix(ends.edit, id), {{
-      ["Content-Type"] = "application/json",
-      ["Authorization"] = fns.t,
-      ["clientId"] = fns.d
-    }}, json.stringify(data))
-  end
-
-  return fns
+  -- todo: check any param on this function and set it to self.t/self.d
+  
+  return self
 end
 
 return blackerz
