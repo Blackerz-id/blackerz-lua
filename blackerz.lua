@@ -3,7 +3,7 @@
 -- bottom text
 
 local coro = require("coro-http")
-local json = require("json")
+local JSON = require("json")
 local fs = require("fs")
 
 local configs = JSON.parse(fs.readSync(fs.openSync("./endpoints.json")))
@@ -26,7 +26,7 @@ end
 
 function blackerzMT:botData(id)
    local res, body = coro.request("GET", fixURL(endpoints.getBotData, id), {{["Content-Type"] = "application/json"}})
-   return json.parse(body) -- result
+   return JSON.parse(body) -- result
 end
 
 function blackerzMT:editBot(id, info)
@@ -44,9 +44,9 @@ function blackerzMT:editBot(id, info)
       ["Content-Type"] = "application/json",
       ["Authorization"] = self.t,
       ["clientId"] = self.d
-    }}, json.stringify(data))
+    }}, JSON.stringify(data))
   
-    return res.code == 201, json.parse(body) -- success: (true|false), body: data returned by server.
+    return res.code == 201, JSON.parse(body) -- success: (true|false), body: data returned by server.
 end
 
 function blackerz()
